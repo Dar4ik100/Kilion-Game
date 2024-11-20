@@ -1,15 +1,20 @@
+import pygame
 from pygame import *
 import random
 from lvl_2 import *
 
 # Ініціалізація Pygame
-init()
+pygame.init()
+mixer.init()
+mixer.music.load("funny_game.mp3")
+mixer.music.play(-1)
+mixer.music.set_volume(0.2)
 
 # Розміри вікна
 wd = 950
 hgt = 750
-cell_size = 50  # Розмір клітини для побудови лабіринту
-wall_thickness = 5  # Товщина стінок лабіринту
+cell_size = 50
+wall_thickness = 5
 player_x_size = 40
 player_y_size = 40
 
@@ -19,6 +24,8 @@ display.set_caption("Kilion Game | Level 1")
 
 # Завантаження фону
 bag = transform.scale(image.load("fon_purp.png"), (wd, hgt))
+menu_bg = transform.scale(image.load("fon_purp.png"), (wd, hgt))
+
 
 class GameSprite(sprite.Sprite):
     def __init__(self, player_image, player_x, player_y, player_speed):
@@ -31,6 +38,7 @@ class GameSprite(sprite.Sprite):
 
     def reset(self):
         window.blit(self.image, (self.rect.x, self.rect.y))
+
 
 class Player(GameSprite):
     def update(self, walls):
@@ -53,6 +61,7 @@ class Player(GameSprite):
                 self.rect.x, self.rect.y = old_x, old_y
                 break
 
+
 class Wall(sprite.Sprite):
     def __init__(self, color, wall_x, wall_y, wall_width, wall_height):
         super().__init__()
@@ -65,6 +74,7 @@ class Wall(sprite.Sprite):
     def draw_wall(self):
         window.blit(self.image, (self.rect.x, self.rect.y))
 
+
 class Door(sprite.Sprite):
     def __init__(self, dor_img, dor_w, dor_h, dor_x, dor_y):
         super().__init__()
@@ -76,6 +86,7 @@ class Door(sprite.Sprite):
     def draw_door(self):
         window.blit(self.image, (self.rect.x, self.rect.y))
 
+
 class Key(sprite.Sprite):
     def __init__(self, key_img, key_w, key_h, key_x, key_y):
         super().__init__()
@@ -83,16 +94,18 @@ class Key(sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = key_x
         self.rect.y = key_y
-        self.collected = False  # Ознака, чи зібраний ключ
+        self.collected = False
 
     def draw_key(self):
         if not self.collected:
             window.blit(self.image, (self.rect.x, self.rect.y))
 
+
 # Генерація лабіринту з використанням DFS
 cols = wd // cell_size
 rows = hgt // cell_size
 maze = [[1 for _ in range(cols)] for _ in range(rows)]
+
 
 def generate_maze(x, y):
     maze[y][x] = 0
@@ -105,26 +118,31 @@ def generate_maze(x, y):
             maze[y + dy][x + dx] = 0
             generate_maze(nx, ny)
 
+
 generate_maze(0, 0)
 
-# Функція для пошуку випадкової вільної клітини
+
 def find_random_empty_cell():
     empty_cells = [(x, y) for y in range(rows) for x in range(cols) if maze[y][x] == 0]
     return random.choice(empty_cells)
 
-# Встановлення гравця в випадковій вільній клітині
-start_x, start_y = find_random_empty_cell()
-player = Player("girly.png", start_x * cell_size, start_y * cell_size, 4)
 
-# Розміщення дверей у випадковій вільній клітині
-door_x, door_y = find_random_empty_cell()
-door = Door("dor_cl.png", 50, 50, door_x * cell_size, door_y * cell_size)
+# Встановлення гравця, дверей і ключа в випадкових клітинах
+def reset_level():
+    global player, key_l, door, finish
+    start_x, start_y = find_random_empty_cell()
+    player = Player("girly.png", start_x * cell_size, start_y * cell_size, 4)
 
-# Розміщення ключа в випадковій вільній клітині
-key_x, key_y = find_random_empty_cell()
-key_l = Key("key.png", 30, 40, key_x * cell_size, key_y * cell_size)
+    door_x, door_y = find_random_empty_cell()
+    door = Door("dor_cl.png", 50, 50, door_x * cell_size, door_y * cell_size)
 
-# Створення вузьких стін для кожної межі клітин лабіринту
+    key_x, key_y = find_random_empty_cell()
+    key_l = Key("key.png", 30, 40, key_x * cell_size, key_y * cell_size)
+    finish = False
+
+
+reset_level()
+
 walls = []
 for y in range(rows):
     for x in range(cols):
@@ -136,7 +154,44 @@ for y in range(rows):
                 wall = Wall((0, 0, 0), x * cell_size, y * cell_size, wall_thickness, cell_size)
                 walls.append(wall)
 
+
+# Функція для відображення меню
+def show_menu():
+    menu_open = True
+    while menu_open:
+        window.blit(menu_bg, (0, 0))
+
+        font = pygame.font.Font(None, 80)
+        continue_text = font.render("Continue", True, (255, 255, 255))
+        reset_text = font.render("Reset", True, (255, 255, 255))
+        exit_text = font.render("Exit", True, (255, 0, 0))
+
+        continue_rect = continue_text.get_rect(center=(wd // 2, hgt // 2 - 100))
+        reset_rect = reset_text.get_rect(center=(wd // 2, hgt // 2))
+        exit_rect = exit_text.get_rect(center=(wd // 2, hgt // 2 + 100))
+
+        window.blit(continue_text, continue_rect)
+        window.blit(reset_text, reset_rect)
+        window.blit(exit_text, exit_rect)
+
+        for e in event.get():
+            if e.type == QUIT:
+                quit()
+            elif e.type == MOUSEBUTTONDOWN:
+                if continue_rect.collidepoint(e.pos):
+                    menu_open = False
+                elif reset_rect.collidepoint(e.pos):
+                    reset_level()
+                    menu_open = False
+                elif exit_rect.collidepoint(e.pos):
+                    quit()
+            elif e.type == KEYDOWN and e.key == K_ESCAPE:
+                menu_open = False
+        display.update()
+
+
 # Основний ігровий цикл
+
 game = True
 finish = False
 clock = time.Clock()
@@ -146,6 +201,8 @@ while game:
     for e in event.get():
         if e.type == QUIT:
             game = False
+        elif e.type == KEYDOWN and e.key == K_ESCAPE:
+            show_menu()
 
     if not finish:
         window.blit(bag, (0, 0))
@@ -154,19 +211,18 @@ while game:
         key_l.draw_key()
         player.reset()
 
-        # Перевірка, чи торкнувся гравець ключа
         if player.rect.colliderect(key_l.rect) and not key_l.collected:
-            key_l.collected = True  # Позначаємо ключ як зібраний
+            key_l.collected = True
             door.image = transform.scale(image.load("dor_op.png"), (50, 50))
 
-        # Перевірка, чи торкнувся гравець дверей
         if player.rect.colliderect(door.rect) and key_l.collected:
             finish = True
             start_level_2()
 
-        # Малюємо всі стіни
         for wall in walls:
             wall.draw_wall()
 
     display.update()
     clock.tick(fps)
+
+
